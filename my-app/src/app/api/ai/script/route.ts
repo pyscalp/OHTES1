@@ -76,6 +76,8 @@ RULES:
 }
 
 // Custom OpenAI-compatible API (default)
+const DEFAULT_MODEL = 'Qwen/Qwen3.6-35B-A3B';
+
 async function generateWithCustom(prompt: string, systemPrompt: string, context: string, model: string, apiKey?: string, temperature?: number) {
   const fullPrompt = context ? `${prompt}\n${context}` : prompt;
   
@@ -86,7 +88,7 @@ async function generateWithCustom(prompt: string, systemPrompt: string, context:
       'Authorization': `Bearer ${apiKey || 'not-needed'}`
     },
     body: JSON.stringify({ 
-      model: model || 'default', 
+      model: DEFAULT_MODEL, 
       messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: fullPrompt }], 
       temperature: temperature || 0.7, 
       max_tokens: 3000
@@ -165,7 +167,11 @@ async function generateWithGoogle(prompt: string, systemPrompt: string, context:
   const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/${model || 'gemini-1.5-pro'}:generateContent?key=${apiKey || process.env.GOOGLE_API_KEY}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ systemInstruction: { parts: [{ text: systemPrompt }] }, contents: [{ parts: [{ text: fullPrompt }] }, generationConfig: { temperature: temperature || 0.7, maxOutputTokens: 3000 } })
+    body: JSON.stringify({ 
+      systemInstruction: { parts: [{ text: systemPrompt }] }, 
+      contents: [{ parts: [{ text: fullPrompt }] }], 
+      generationConfig: { temperature: temperature || 0.7, maxOutputTokens: 3000 } 
+    })
   });
   if (!response.ok) throw new Error('Google API error');
   const data = await response.json();
