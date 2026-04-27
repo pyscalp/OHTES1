@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Custom API endpoint
+const CUSTOM_API_URL = 'http://89.169.108.20:8000/v1/chat/completions';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -9,8 +12,8 @@ export async function POST(request: NextRequest) {
       platform = 'youtube', 
       style = 'casual', 
       duration = 60, 
-      provider = 'openai', 
-      model = 'gpt-4o', 
+      provider = 'custom', 
+      model = 'default', 
       apiKey, 
       temperature = 0.7,
       enableSearch = true
@@ -44,6 +47,9 @@ RULES:
 
     let scriptResult;
     switch (provider) {
+      case 'custom': 
+        scriptResult = await generateWithCustom(topic || prompt, systemPrompt, context, model, apiKey, temperature); 
+        break;
       case 'openai': 
         scriptResult = await generateWithOpenAI(topic || prompt, systemPrompt, context, model, apiKey, temperature); 
         break;
@@ -54,7 +60,7 @@ RULES:
         scriptResult = await generateWithGoogle(topic || prompt, systemPrompt, context, model, apiKey, temperature); 
         break;
       default: 
-        return NextResponse.json({ error: `Provider ${provider} not supported` }, { status: 400 });
+        scriptResult = await generateWithCustom(topic || prompt, systemPrompt, context, model, apiKey, temperature);
     }
 
     return NextResponse.json({
@@ -69,23 +75,50 @@ RULES:
   }
 }
 
+// Custom OpenAI-compatible API (default)
+async function generateWithCustom(prompt: string, systemPrompt: string, context: string, model: string, apiKey?: string, temperature?: number) {
+  const fullPrompt = context ? `${prompt}\n${context}` : prompt;
+  
+  const response = await fetch(CUSTOM_API_URL, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey || 'not-needed'}`
+    },
+    body: JSON.stringify({ 
+      model: model || 'default', 
+      messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: fullPrompt }], 
+      temperature: temperature || 0.7, 
+      max_tokens: 3000
+    })
+  });
+  
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Custom API error: ${response.status} - ${err}`);
+  }
+  
+  const data = await response.json();
+  try {
+    return JSON.parse(data.choices[0].message.content);
+  } catch {
+    return { 
+      hook: data.choices[0].message.content?.substring(0, 200), 
+      sections: [{ title: 'Content', content: data.choices[0].message.content }], 
+      cta: 'Subscribe!', 
+      factsUsed: [] 
+    };
+  }
+}
+
 // Web Search using Tavily
 async function searchInternet(query: string): Promise<any[]> {
   try {
-    const tavilyKey = process.env.TAVILY_API_KEY;
-    if (!tavilyKey) {
-      // Fallback to free search
-      const res = await fetch(`https://api.tavily.com/search?q=${encodeURIComponent(query)}&api_key=demo&max_results=3`);
-      const data = await res.json();
-      return data.results || [];
-    }
-    
     const response = await fetch('https://api.tavily.com/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, api_key: tavilyKey, max_results: 5, search_depth: 'basic' })
+      body: JSON.stringify({ query, api_key: process.env.TAVILY_API_KEY || 'demo', max_results: 3, search_depth: 'basic' })
     });
-    
     const data = await response.json();
     return data.results || [];
   } catch (e) {
