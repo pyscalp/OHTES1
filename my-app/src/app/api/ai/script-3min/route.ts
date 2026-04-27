@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const CUSTOM_API_URL = 'http://89.169.108.20:8000/v1/chat/completions';
-const DEFAULT_MODEL = 'Qwen/Qwen3.6-35B-A3B';
+const DEFAULT_MODEL = 'google/gemma-4-31b-it';
 
 export async function POST(request: NextRequest) {
   try {

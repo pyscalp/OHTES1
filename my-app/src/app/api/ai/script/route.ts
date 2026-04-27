@@ -34,16 +34,15 @@ export async function POST(request: NextRequest) {
       ? `\n\nLATEST INFORMATION:\n${searchResults.map(r => `- ${r.title}: ${r.content?.substring(0, 300)}`).join('\n')}`
       : '';
 
-    const systemPrompt = `You are an expert video script writer. Create accurate, well-researched video scripts using the provided context.
+    const systemPrompt = `You are an expert video script writer. Create engaging video scripts.
     
 RULES:
-- Only use facts from the provided context
-- If information is unsure, say "Based on..."
-- Include specific data, dates, sources when available
+- Create script from your knowledge (no external context needed)
+- Include accurate information you know about the topic
 - Style: ${style}
 - Platform: ${platform}
 - Duration: ${duration} seconds
-- Format as JSON with: hook, sections[{title, content}], cta, factsUsed[]`;
+- Format as JSON: hook, sections[{title, content}], cta, factsUsed[]`;
 
     let scriptResult;
     switch (provider) {
@@ -76,7 +75,7 @@ RULES:
 }
 
 // Custom OpenAI-compatible API (default)
-const DEFAULT_MODEL = 'Qwen/Qwen3.6-35B-A3B';
+const DEFAULT_MODEL = 'google/gemma-4-31b-it';
 
 async function generateWithCustom(prompt: string, systemPrompt: string, context: string, model: string, apiKey?: string, temperature?: number) {
   const fullPrompt = context ? `${prompt}\n${context}` : prompt;
