@@ -61,33 +61,44 @@ export default function NewProjectPage() {
     if (!topic.trim()) return;
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      const generatedScript = `🎬 ${topic}
+      const response = await fetch('/api/ai/script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic,
+          platform,
+          style,
+          provider: aiConfig.provider,
+          apiKey: aiConfig.apiKey,
+          enableSearch: true
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.script) {
+        // Format script dari API response
+        const generatedScript = `🎬 ${data.script.hook || topic}
 
 [OPENING]
-Hey everyone! Welcome back. Today we're diving into ${topic}.
+${data.script.hook || `Hey everyone! Today we're talking about ${topic}.`}
 
 [MAIN CONTENT]
-Let me break this down into key points:
-
-First, why ${topic} matters so much in today's world. Whether you're a beginner or experienced, understanding this will change how you approach your work.
-
-The first key thing you need to know is that success comes from taking consistent action.
-
-Now, here's the practical part:
-
-Step 1: Start with understanding your goals
-Step 2: Break it down into manageable pieces  
-Step 3: Take action and iterate
+${data.script.sections?.map((s: any) => `[${s.title}]\n${s.content}`).join('\n\n') || ''}
 
 [CLOSING]
-If you found this helpful, like and subscribe! Hit that notification bell.
+${data.script.cta || 'Like and subscribe if you found this helpful!'}
 
-Until next time, keep creating! 🎥`;
-      setScript(generatedScript);
+---
+📚 Sources used: ${data.grounding?.sources?.map((s: any) => s.title).join(', ') || 'None'}`;
+        setScript(generatedScript);
+      } else {
+        throw new Error(data.error || 'Failed to generate script');
+      }
       setStep(2);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to generate script:", error);
+      alert(error.message || "Failed to generate script. Please check your API key in Settings.");
     } finally {
       setLoading(false);
     }
